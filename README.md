@@ -38,7 +38,7 @@ Edit [config.py](config.py) to remap gestures.
 ## Install
 
 ```bash
-git clone https://github.com/<your-username>/gesture-app.git
+git clone https://github.com/jobint001/gesture-app.git
 cd gesture-app
 bash install.sh
 ```
