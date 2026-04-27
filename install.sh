@@ -41,33 +41,30 @@ if ! grep -q "^uinput" /etc/modules-load.d/uinput.conf 2>/dev/null; then
 fi
 sudo modprobe uinput 2>/dev/null || warn "modprobe uinput: may already be loaded"
 
+# Scope device access to *this* installing user only — not world-readable.
+# Using OWNER="$USER" MODE="0600" means only $USER can read/write the device,
+# eliminating the local-priv-esc / touch-keylogger surface of MODE="0666".
 UDEV_RULE='/etc/udev/rules.d/99-uinput.rules'
-info "Writing udev rule for /dev/uinput (MODE=0666)…"
-# 0666 lets the user session write to /dev/uinput without needing the
-# 'input' group to be active in the current login.  Required for the
-# evdev.UInput-based virtual keyboard used for Alt+Tab, Super, etc.
-echo 'KERNEL=="uinput", MODE="0666"' | sudo tee "$UDEV_RULE" >/dev/null
+info "Writing udev rule for /dev/uinput (owner=$USER mode=0600)…"
+echo "KERNEL==\"uinput\", OWNER=\"$USER\", MODE=\"0600\"" \
+    | sudo tee "$UDEV_RULE" >/dev/null
 
-# Grant the logged-in seat user direct access to the touchpad via uaccess.
-# This avoids needing a logout/login for input-group membership to take effect.
 TOUCHPAD_RULE='/etc/udev/rules.d/99-touchpad-uaccess.rules'
-info "Writing udev rule for touchpad access (MODE=0666 + uaccess tag)…"
-# MODE="0666" makes the touchpad device world-readable AND writable.
-# evdev's list_devices() requires R+W access (it calls os.access(fn, R_OK|W_OK)),
-# so 0664 alone is not enough — write access is required even though we never
-# write to the device.  TAG+="uaccess" additionally grants seat-user ACLs.
-echo 'KERNEL=="event*", SUBSYSTEM=="input", ENV{ID_INPUT_TOUCHPAD}=="1", MODE="0666", TAG+="uaccess"' \
+info "Writing udev rule for touchpad access (owner=$USER mode=0600 + uaccess)…"
+# uaccess additionally lets systemd-logind add ACLs for the active seat user
+# at login time; OWNER+MODE is the belt-and-braces fallback for systems where
+# uaccess doesn't end up applying (e.g. when udevadm is triggered manually).
+echo "KERNEL==\"event*\", SUBSYSTEM==\"input\", ENV{ID_INPUT_TOUCHPAD}==\"1\", OWNER=\"$USER\", MODE=\"0600\", TAG+=\"uaccess\"" \
     | sudo tee "$TOUCHPAD_RULE" >/dev/null
-sudo udevadm control --reload-rules
-# Use --action=add so the mode/ACL changes are actually applied to existing nodes
-sudo udevadm trigger --action=add --subsystem-match=input
 
-# Also add to input group (good practice, needed after reboot before first login)
-NEED_RELOGIN=0
-if ! groups | grep -qw input; then
-    info "Adding $USER to the 'input' group (takes effect on next login)…"
-    sudo usermod -aG input "$USER"
-fi
+sudo udevadm control --reload-rules
+# --action=add is what fires MODE/OWNER/TAG application on existing nodes
+sudo udevadm trigger --action=add --subsystem-match=input
+sudo udevadm trigger --action=add --subsystem-match=misc
+
+# With OWNER="$USER" rules in place we no longer need 'input' group membership
+# for the app to work — keep this section out so we don't over-privilege the
+# user with broad input-group access just to run gesture recognition.
 
 # ── 4. Python virtual environment ─────────────────────────────────────────────
 info "Creating Python virtual environment at $VENV…"
@@ -121,9 +118,9 @@ ExecStart=$VENV/bin/python $APP_DIR/main.py
 Restart=on-failure
 RestartSec=3
 Environment=PYTHONUNBUFFERED=1
-# Activate the input group immediately — no logout/login needed
-SupplementaryGroups=input
-# Forward Wayland/D-Bus session variables
+# Forward Wayland/D-Bus session variables so gdbus & uinput find the right session.
+# The udev OWNER="$USER" rules give the user direct access to the devices,
+# so no SupplementaryGroups= needed (which doesn't work in a user unit anyway).
 PassEnvironment=WAYLAND_DISPLAY XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS DISPLAY
 
 [Install]
