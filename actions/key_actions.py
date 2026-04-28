@@ -36,6 +36,8 @@ def _get_ui() -> Optional[UInput]:
                         ecodes.KEY_PAGEDOWN,
                         ecodes.KEY_LEFTCTRL,
                         ecodes.KEY_D,
+                        ecodes.KEY_LEFT,
+                        ecodes.KEY_RIGHT,
                     ]
                 },
                 name="gesture-app-vkbd",
@@ -120,6 +122,16 @@ async def send_super_pageup():
 async def send_super_d():
     """Super+D → show desktop (must be bound in keyboard settings)."""
     await chord(ecodes.KEY_LEFTMETA, ecodes.KEY_D)
+
+
+async def send_alt_left():
+    """Alt+Left → browser back."""
+    await chord(ecodes.KEY_LEFTALT, ecodes.KEY_LEFT)
+
+
+async def send_alt_right():
+    """Alt+Right → browser forward."""
+    await chord(ecodes.KEY_LEFTALT, ecodes.KEY_RIGHT)
 
 
 def close():

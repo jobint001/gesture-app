@@ -15,6 +15,8 @@ commit, just like on Windows 11 / macOS.
 
 | Gesture | Action |
 |---|---|
+| 2-finger swipe left  | Browser forward (Alt+Right) |
+| 2-finger swipe right | Browser back (Alt+Left) |
 | 3-finger swipe up    | Activities overview |
 | 3-finger swipe down  | Show desktop (Super+D) |
 | 3-finger swipe left  | Next workspace |
@@ -22,6 +24,11 @@ commit, just like on Windows 11 / macOS.
 | 4-finger swipe right | Alt+Tab popup, highlight moves right |
 | 4-finger swipe left  | Alt+Tab popup, highlight moves left |
 | 3-finger tap         | Middle click |
+
+The 2-finger swipe shares the touchpad with libinput's 2-finger scroll, so
+it requires a deliberately long & strongly horizontal motion (≥90 px and a
+3:1 horizontal-to-vertical ratio) to fire — normal scrolling won't trigger
+it.
 
 The 4-finger horizontal gesture is **live**: the popup tracks your fingers in
 real time, you reverse direction by reversing the swipe, and lifting commits

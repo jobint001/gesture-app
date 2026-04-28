@@ -7,10 +7,15 @@ Gesture name format:
   pinch_in, pinch_out
 """
 
-from actions import gnome_actions
+from actions import gnome_actions, key_actions
 
 # ── Gesture → coroutine mapping ───────────────────────────────────────────────
 GESTURE_MAP = {
+    # 2-finger horizontal — browser back / forward
+    # Same direction convention as 3-finger (left=next/forward, right=back).
+    "swipe_2_left":  key_actions.send_alt_right,   # forward
+    "swipe_2_right": key_actions.send_alt_left,    # back
+
     # 3-finger vertical — overview / show desktop
     "swipe_3_up":    gnome_actions.show_activities,
     "swipe_3_down":  gnome_actions.show_desktop,

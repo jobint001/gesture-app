@@ -19,6 +19,10 @@ log = logging.getLogger(__name__)
 # ── tunables ─────────────────────────────────────────────────────────────────
 SWIPE_MIN_DISTANCE = 40       # px: minimum net displacement to count as swipe
 SWIPE_LOCK_RATIO   = 1.8      # axis lock: primary/secondary must exceed this
+# 2-finger swipes share the touchpad with libinput's 2-finger scroll, so we
+# require a longer & much more horizontally-dominant motion to call it a swipe.
+SWIPE_2F_MIN_DISTANCE = 90
+SWIPE_2F_LOCK_RATIO   = 3.0
 PINCH_MIN_RATIO    = 0.25     # scale change fraction to fire pinch
 TAP_MAX_MOVE       = 12       # px: max finger travel for a tap
 TAP_MAX_DURATION   = 0.35     # seconds: max duration for a tap
@@ -211,17 +215,28 @@ class GestureRecognizer:
                 if abs(ratio) >= PINCH_MIN_RATIO:
                     direction = "in" if ratio < 0 else "out"
                     await self.on_gesture(f"pinch_{direction}", {"ratio": ratio})
-            return
+                    return
+            # No pinch detected — fall through to swipe so 2-finger horizontal
+            # translation can fire swipe_2_left / swipe_2_right (browser back/fwd).
 
         # ── SWIPE ────────────────────────────────────────────────────────────
-        if dist < SWIPE_MIN_DISTANCE:
+        # 2-finger has stricter thresholds because libinput already uses 2-finger
+        # motion for scrolling — we want to fire only on deliberate horizontal swipes.
+        min_dist   = SWIPE_2F_MIN_DISTANCE if n == 2 else SWIPE_MIN_DISTANCE
+        lock_ratio = SWIPE_2F_LOCK_RATIO   if n == 2 else SWIPE_LOCK_RATIO
+
+        if dist < min_dist:
             return
 
         adx, ady = abs(dx), abs(dy)
 
         # Require a dominant axis
-        if adx < ady * SWIPE_LOCK_RATIO and ady < adx * SWIPE_LOCK_RATIO:
+        if adx < ady * lock_ratio and ady < adx * lock_ratio:
             log.debug("Diagonal swipe ignored (no dominant axis)")
+            return
+
+        # 2-finger gestures only fire on horizontal motion (no swipe_2_up/down)
+        if n == 2 and ady > adx:
             return
 
         if adx >= ady:
