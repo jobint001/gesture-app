@@ -17,12 +17,12 @@ from detector.touch_reader import TouchState
 log = logging.getLogger(__name__)
 
 # ── tunables ─────────────────────────────────────────────────────────────────
-SWIPE_MIN_DISTANCE = 40       # px: minimum net displacement to count as swipe
-SWIPE_LOCK_RATIO   = 1.8      # axis lock: primary/secondary must exceed this
+SWIPE_MIN_DISTANCE = 70       # px: minimum net displacement to count as swipe
+SWIPE_LOCK_RATIO   = 2.2      # axis lock: primary/secondary must exceed this
 # 2-finger swipes share the touchpad with libinput's 2-finger scroll, so we
 # require a longer & much more horizontally-dominant motion to call it a swipe.
-SWIPE_2F_MIN_DISTANCE = 90
-SWIPE_2F_LOCK_RATIO   = 3.0
+SWIPE_2F_MIN_DISTANCE = 200
+SWIPE_2F_LOCK_RATIO   = 4.5
 PINCH_MIN_RATIO    = 0.25     # scale change fraction to fire pinch
 TAP_MAX_MOVE       = 12       # px: max finger travel for a tap
 TAP_MAX_DURATION   = 0.35     # seconds: max duration for a tap
@@ -30,8 +30,8 @@ HOLD_MIN_DURATION  = 0.6      # seconds: minimum hold for long-press (future)
 
 # Live (interactive) gesture tunables — currently used for 4-finger horizontal
 # swipes that drive an interactive Alt+Tab popup.
-LIVE_ENTRY_DISTANCE = 35      # px of horizontal motion to enter live mode
-LIVE_STEP_DISTANCE  = 70      # px between live "step" events (= one Tab press)
+LIVE_ENTRY_DISTANCE = 60      # px of horizontal motion to enter live mode
+LIVE_STEP_DISTANCE  = 100     # px between live "step" events (= one Tab press)
 # ─────────────────────────────────────────────────────────────────────────────
 
 GestureHandler     = Callable[[str, dict], Awaitable[None]]
