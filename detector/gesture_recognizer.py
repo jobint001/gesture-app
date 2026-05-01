@@ -106,8 +106,13 @@ class GestureRecognizer:
         # ── During gesture ───────────────────────────────────────────────────
         elif fingers > 0:
             cx, cy = _centroid(active)
-            self._last_cx = cx
-            self._last_cy = cy
+            # Only track displacement while the full set of fingers is on the
+            # pad.  Once a finger lifts the centroid jumps to the remaining
+            # finger(s), which would create a large spurious displacement and
+            # could fire an unintended swipe (e.g. 2-finger touch → "back").
+            if fingers >= self._peak_fingers:
+                self._last_cx = cx
+                self._last_cy = cy
 
             finger_count_changed = (fingers != self._prev_fingers)
 
