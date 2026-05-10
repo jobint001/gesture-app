@@ -152,6 +152,10 @@ async def live_alt_tab(phase: str, info: dict):
             direction = info.get("direction", 1)
             log.debug("live_alt_tab UPDATE dir=%+d", direction)
             await _tap_directional(direction)
+            # Give Mutter time to finish animating the switcher before the
+            # next Tab arrives — firing too fast corrupts workspaceAnimation.js
+            # (record is undefined crash) and eventually stalls the compositor.
+            await asyncio.sleep(0.08)
 
         elif phase == "end":
             log.info("live_alt_tab END (committing selection)")

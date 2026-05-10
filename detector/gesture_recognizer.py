@@ -23,6 +23,8 @@ SWIPE_LOCK_RATIO   = 2.2      # axis lock: primary/secondary must exceed this
 # require a longer & much more horizontally-dominant motion to call it a swipe.
 SWIPE_2F_MIN_DISTANCE = 200
 SWIPE_2F_LOCK_RATIO   = 4.5
+SWIPE_2F_DOUBLE_INTERVAL = 0.7  # seconds: max gap between the two swipes
+                                #  of a 2-finger double-swipe (back/forward)
 PINCH_MIN_RATIO    = 0.25     # scale change fraction to fire pinch
 TAP_MAX_MOVE       = 12       # px: max finger travel for a tap
 TAP_MAX_DURATION   = 0.35     # seconds: max duration for a tap
@@ -66,6 +68,9 @@ class GestureRecognizer:
                  on_live: Optional[LiveGestureHandler] = None):
         self.on_gesture = on_gesture
         self.on_live = on_live
+        # Double-swipe state persists across gesture resets
+        self._pending_2f_dir: Optional[str] = None
+        self._pending_2f_time: Optional[float] = None
         self._reset()
 
     def _reset(self):
@@ -174,18 +179,17 @@ class GestureRecognizer:
             await self.on_live(self._live_name, "begin", {"direction": direction})
             return
 
-        # Already live — fire one update for each LIVE_STEP_DISTANCE crossed.
-        # Loop in case the user moved several steps' worth between SYN events
-        # (otherwise a fast swipe would under-count Tab presses).
-        while True:
-            dx_anchor = cx - self._live_anchor_x
-            if abs(dx_anchor) < LIVE_STEP_DISTANCE:
-                return
-            direction = 1 if dx_anchor > 0 else -1
-            log.debug("Live UPDATE dir=%+d  dx_anchor=%.1f", direction, dx_anchor)
-            await self.on_live(self._live_name, "update", {"direction": direction})
-            # Advance anchor by exactly one step in that direction
-            self._live_anchor_x += direction * LIVE_STEP_DISTANCE
+        # Already live — fire at most one step per feed() call to avoid
+        # bursting multiple Tab presses from a single SYN event.  The anchor
+        # advances so accumulated distance carries over to the next call.
+        dx_anchor = cx - self._live_anchor_x
+        if abs(dx_anchor) < LIVE_STEP_DISTANCE:
+            return
+        direction = 1 if dx_anchor > 0 else -1
+        log.debug("Live UPDATE dir=%+d  dx_anchor=%.1f", direction, dx_anchor)
+        await self.on_live(self._live_name, "update", {"direction": direction})
+        # Advance anchor by exactly one step in that direction
+        self._live_anchor_x += direction * LIVE_STEP_DISTANCE
 
     async def _fire(self, state: TouchState):
         if self._gesture_start_time is None:
@@ -248,6 +252,24 @@ class GestureRecognizer:
             direction = "right" if dx > 0 else "left"
         else:
             direction = "down" if dy > 0 else "up"
+
+        # 2-finger horizontal requires a double-swipe to avoid firing during
+        # normal horizontal content scrolling.
+        if n == 2 and (direction == "left" or direction == "right"):
+            now = time.monotonic()
+            if (self._pending_2f_dir == direction
+                    and self._pending_2f_time is not None
+                    and now - self._pending_2f_time <= SWIPE_2F_DOUBLE_INTERVAL):
+                # Second swipe confirmed — fire and clear pending state
+                log.debug("2-finger double-swipe confirmed: %s", direction)
+                self._pending_2f_dir = None
+                self._pending_2f_time = None
+            else:
+                # First swipe — record and wait for the second
+                log.debug("2-finger first swipe recorded: %s", direction)
+                self._pending_2f_dir = direction
+                self._pending_2f_time = now
+                return
 
         gesture_name = f"swipe_{n}_{direction}"
         await self.on_gesture(gesture_name, {
