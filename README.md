@@ -15,8 +15,8 @@ commit, just like on Windows 11 / macOS.
 
 | Gesture | Action |
 |---|---|
-| 2-finger swipe left  | Browser forward (Alt+Right) |
-| 2-finger swipe right | Browser back (Alt+Left) |
+| 2-finger double swipe left  | Browser forward (Alt+Right) |
+| 2-finger double swipe right | Browser back (Alt+Left) |
 | 3-finger swipe up    | Activities overview |
 | 3-finger swipe down  | Show desktop (Super+D) |
 | 3-finger swipe left  | Next workspace |
